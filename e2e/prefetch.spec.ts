@@ -6,9 +6,10 @@ async function approach(page: Page) {
   const box = (await card.boundingBox())!;
   const y = box.y + box.height / 2;
   await page.mouse.move(box.x - 340, y);
-  // Real mouse events with a steady approach; never enter the link's rectangle.
-  for (let i = 0; i < 12; i++) {
-    await page.mouse.move(box.x - 300 + i * 24, y);
+  // Small real mouse steps leave time for conservative intent to settle.
+  // End six pixels before the link, without hovering it.
+  for (let i = 0; i < 50; i++) {
+    await page.mouse.move(box.x - 300 + i * 6, y);
     await page.waitForTimeout(20);
   }
   return card;
@@ -149,8 +150,8 @@ for (const mode of ['Conservative', 'Balanced', 'Aggressive']) {
     const y = box.y + box.height / 2;
     await page.mouse.move(box.x - 340, y);
     let sawPrediction = false;
-    for (let i = 0; i < 12; i++) {
-      await page.mouse.move(box.x - 300 + i * 24, y);
+    for (let i = 0; i < 50; i++) {
+      await page.mouse.move(box.x - 300 + i * 6, y);
       await page.waitForTimeout(20);
       const live = await card.evaluate((element) => {
         const overlay = document.querySelector('.prediction-overlay')!;
