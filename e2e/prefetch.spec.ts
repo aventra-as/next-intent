@@ -70,7 +70,7 @@ test('keeps Next.js navigation working after prefetch', async ({ page }) => {
   ).toBeVisible();
   await page.getByRole('link', { name: /Back to the playground/ }).click();
   await expect(
-    page.getByRole('heading', { name: 'Prefetch before hover.' }),
+    page.getByRole('heading', { name: 'A head start on your next click.' }),
   ).toBeVisible();
 });
 
@@ -128,7 +128,7 @@ test('hydrates without runtime errors and fits a phone viewport', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(basePath + '/');
   await expect(
-    page.getByRole('heading', { name: 'Prefetch before hover.' }),
+    page.getByRole('heading', { name: 'A head start on your next click.' }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -239,4 +239,76 @@ test('shows a neutral projection when moving away from the links', async ({
     'data-active',
     'false',
   );
+});
+
+test('navigates the documentation and returns to the playground', async ({
+  page,
+}) => {
+  await page.goto(basePath + '/');
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Docs', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Getting started', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('npm install next-intent', { exact: true }),
+  ).toBeVisible();
+  for (const [label, heading] of [
+    ['Prediction & modes', 'Prediction & modes'],
+    ['Configuration', 'Configuration'],
+    ['API reference', 'API reference'],
+    ['Recipes & troubleshooting', 'Recipes & troubleshooting'],
+  ]) {
+    const link = page
+      .getByRole('navigation', { name: 'Documentation', exact: true })
+      .getByRole('link', { name: label, exact: true });
+    await link.click();
+    await expect(
+      page.getByRole('heading', { name: heading, exact: true }),
+    ).toBeVisible();
+    await expect(link).toHaveAttribute('aria-current', 'page');
+  }
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Playground', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'A head start on your next click.' }),
+  ).toBeVisible();
+  await expect(page.locator('.wordmark')).toHaveCSS('font-weight', '400');
+});
+
+test('copies a documentation code example', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(basePath + '/docs');
+  await page
+    .getByRole('button', { name: 'Copy Terminal', exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Copy Terminal', exact: true }).first(),
+  ).toHaveText('Copied');
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    'npm install next-intent',
+  );
+});
+
+test('documentation fits mobile and supports direct section links', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(basePath + '/docs/configuration#options');
+  await expect(
+    page.getByRole('heading', { name: 'Options', exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(
+    page.getByRole('navigation', { name: 'Documentation', exact: true }),
+  ).toBeVisible();
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { IntentLink, type IntentEvent, type PredictionMode } from 'next-intent';
 import { PredictionOverlay } from './prediction-overlay';
 import { predictionPresets } from 'next-intent/core';
@@ -69,17 +70,12 @@ export default function Playground() {
   }
   return (
     <main>
-      <header>
-        <span className="wordmark">next-intent</span>
-        <a
-          className="github-link"
-          href="https://github.com/hypervisor/next-intent"
-        >
-          GitHub <span aria-hidden="true">↗</span>
-        </a>
-      </header>
       <section className="intro">
-        <h1>Prefetch before hover.</h1>
+        <h1>
+          A head start
+          <br />
+          on your next click.
+        </h1>
         <p>Predict the next link from cursor movement. Try it below.</p>
       </section>
       <div className="toolbar">
@@ -111,6 +107,7 @@ export default function Playground() {
           mode={mode}
           enabled={enabled}
           onIntent={record}
+          filter={(_href, element) => element.classList.contains('card')}
         />
         <div className="launch" aria-hidden="true">
           <span className="start-point">↗</span>
@@ -206,9 +203,7 @@ export default function Playground() {
       </details>
       <footer>
         <code>&lt;NextIntent mode="{mode}" /&gt;</code>
-        <a href="https://github.com/hypervisor/next-intent#app-router">
-          Setup guide ↗
-        </a>
+        <Link href="/docs">Setup guide →</Link>
       </footer>
     </main>
   );

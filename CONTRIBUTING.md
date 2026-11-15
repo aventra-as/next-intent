@@ -35,8 +35,8 @@ measurements of request volume and navigation latency.
 1. Update the version and changelog, then regenerate the lockfile.
 2. Run `npm run check` and both production browser test configurations.
 3. Review `npm pack --dry-run` and install a tarball into a consumer app.
-4. For the initial npm release, remove `private: true` from `package.json`.
-5. Publish deliberately from the reviewed commit using the npm account's
-   configured authentication, then tag the released version.
+4. Publish the reviewed archive with `npm publish <archive> --access public`
+   using a maintainer account's configured authentication.
+5. Verify the installed registry package, then tag the released version.
 
 CI runs validation only. Package publication is a separate maintainer action.

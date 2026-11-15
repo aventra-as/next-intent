@@ -1,18 +1,17 @@
 {
   "name": "next-intent",
   "version": "0.1.0",
-  "private": true,
   "description": "Predict cursor intent and prefetch Next.js routes before hover.",
   "type": "module",
   "license": "MIT",
   "author": "Adrian Johnsen",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hypervisor/next-intent.git"
+    "url": "https://github.com/aventra-as/next-intent.git"
   },
-  "homepage": "https://github.com/hypervisor/next-intent#readme",
+  "homepage": "https://github.com/aventra-as/next-intent#readme",
   "bugs": {
-    "url": "https://github.com/hypervisor/next-intent/issues"
+    "url": "https://github.com/aventra-as/next-intent/issues"
   },
   "keywords": [
     "nextjs",
@@ -110,5 +109,9 @@
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^11.0.1"
     }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

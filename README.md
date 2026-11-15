@@ -9,11 +9,16 @@ dependencies beyond the React and Next.js APIs it uses.
 
 ## Try it
 
-The package is in development and has not been published to npm yet. Run the
-included playground:
+Install the package:
 
 ```sh
-git clone https://github.com/hypervisor/next-intent.git
+npm install next-intent
+```
+
+Run the included playground and documentation locally:
+
+```sh
+git clone https://github.com/aventra-as/next-intent.git
 cd next-intent
 npm ci
 npm run demo:build

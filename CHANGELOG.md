@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.1.0
+
+- Documentation for setup, configuration, prediction, API usage, and recipes.
 
 - Live prediction frames and a playground with projected paths and target highlights.
 
