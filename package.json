@@ -1,0 +1,113 @@
+{
+  "name": "next-intent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Predict cursor intent and prefetch Next.js routes before hover.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Adrian Johnsen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hypervisor/next-intent.git"
+  },
+  "homepage": "https://github.com/hypervisor/next-intent#readme",
+  "bugs": {
+    "url": "https://github.com/hypervisor/next-intent/issues"
+  },
+  "keywords": [
+    "nextjs",
+    "react",
+    "prefetch",
+    "cursor",
+    "intent",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./pages": {
+      "types": "./dist/pages.d.ts",
+      "import": "./dist/pages.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:package": "npm run build && node scripts/check-package.mjs",
+    "test:e2e": "npm run demo:build && playwright test",
+    "check": "npm run lint && npm run typecheck && npm run test:coverage && npm run test:package",
+    "demo": "npm run build && npm run dev -w examples/next-app",
+    "demo:build": "npm run build && npm run build -w examples/next-app",
+    "demo:start": "npm run start -w examples/next-app",
+    "prepack": "npm run build"
+  },
+  "workspaces": [
+    "examples/next-app"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "peerDependencies": {
+    "next": ">=15.4.0 <17",
+    "react": "^18.2.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.56.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "fast-check": "^4.3.0",
+    "jsdom": "^27.0.0",
+    "next": "16.4.6",
+    "prettier": "^3.6.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.1"
+    }
+  }
+}

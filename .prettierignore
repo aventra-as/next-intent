@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+package-lock.json
+examples/next-app/.next
+examples/next-app/next-env.d.ts
+playwright-report
+test-results
