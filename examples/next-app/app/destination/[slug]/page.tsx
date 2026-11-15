@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+export const metadata = { robots: { index: false, follow: true } };
+
 const names: Record<string, string> = {
   atlas: 'Atlas',
   studio: 'Studio',

@@ -1,40 +1,24 @@
-'use client';
-import { useState } from 'react';
+import { codeToHtml } from 'shiki';
+import { CopyCode } from './copy-code';
 
-export function Code({
+export async function Code({
   children,
   label,
 }: {
   children: string;
   label?: string;
 }) {
-  const [status, setStatus] = useState('Copy');
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(children);
-      setStatus('Copied');
-    } catch {
-      setStatus('Select text to copy');
-    }
-  }
+  const html = await codeToHtml(children, {
+    lang: label === 'Terminal' ? 'bash' : 'tsx',
+    theme: 'github-light',
+  });
   return (
     <div className="code-block">
       <div className="code-toolbar">
         <span>{label}</span>
-        <button
-          type="button"
-          onClick={copy}
-          aria-label={label ? `Copy ${label}` : 'Copy code'}
-        >
-          {status}
-        </button>
-        <span className="sr-only" role="status">
-          {status === 'Copy' ? '' : status}
-        </span>
+        <CopyCode text={children} label={label ?? 'code'} />
       </div>
-      <pre>
-        <code>{children}</code>
-      </pre>
+      <div dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   );
 }

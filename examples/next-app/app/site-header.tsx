@@ -12,7 +12,6 @@ export function SiteHeader() {
         </Link>
         <Link href="/docs">Docs</Link>
         <a href="https://www.npmjs.com/package/next-intent">npm ↗</a>
-        <a href="https://github.com/aventra-as/next-intent">GitHub ↗</a>
       </nav>
     </header>
   );

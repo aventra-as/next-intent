@@ -1,5 +1,10 @@
 import { docs, DocContent } from './content';
-export const metadata = { title: 'Getting started' };
+import { pageMetadata } from '../site';
+export const metadata = pageMetadata(
+  'Getting started with Next.js',
+  docs.start!.description,
+  '/docs',
+);
 export default function GettingStarted() {
-  return <DocContent doc={docs.start!} />;
+  return <DocContent doc={docs.start!} path="/docs" />;
 }

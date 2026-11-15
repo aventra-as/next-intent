@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Code } from './code';
+import { StructuredData } from '../structured-data';
+import { siteUrl } from '../site';
 
 type Section = { id: string; title: string; body: ReactNode };
 type Doc = { title: string; description: string; sections: Section[] };
@@ -93,7 +95,8 @@ const options = [
 export const docs: Record<string, Doc> = {
   start: {
     title: 'Getting started',
-    description: 'Prefetch Next.js routes as the cursor approaches a link.',
+    description:
+      'Install next-intent in a Next.js App Router or Pages Router project. Set up cursor-based route prefetching with TypeScript and React.',
     sections: [
       {
         id: 'install',
@@ -703,9 +706,29 @@ export function Navigation() {
   },
 };
 
-export function DocContent({ doc }: { doc: Doc }) {
+export function DocContent({ doc, path }: { doc: Doc; path: string }) {
   return (
     <>
+      <StructuredData
+        value={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: 'next-intent',
+              item: siteUrl(),
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: doc.title,
+              item: siteUrl(path),
+            },
+          ],
+        }}
+      />
       <h1>{doc.title}</h1>
       <p className="docs-lead">{doc.description}</p>
       <nav className="on-this-page" aria-label="On this page">
@@ -725,7 +748,6 @@ export function DocContent({ doc }: { doc: Doc }) {
       ))}
       <footer>
         <Link href="/">Try the playground →</Link>
-        <a href="https://github.com/aventra-as/next-intent">View source ↗</a>
       </footer>
     </>
   );

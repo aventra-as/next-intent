@@ -314,3 +314,57 @@ test('documentation fits mobile and supports direct section links', async ({
     page.getByRole('navigation', { name: 'Documentation', exact: true }),
   ).toBeVisible();
 });
+
+test('renders highlighted code and the Aventra footer', async ({ page }) => {
+  await page.goto(basePath + '/docs');
+  await expect(page.locator('pre.shiki')).not.toHaveCount(0);
+  const colors = await page
+    .locator('pre.shiki span[style]')
+    .evaluateAll((elements) => [
+      ...new Set(
+        elements.map((element) => (element as HTMLElement).style.color),
+      ),
+    ]);
+  expect(colors.length).toBeGreaterThan(2);
+  await expect(page.locator('.site-footer')).toContainText('Made with');
+  await expect(
+    page.locator('.site-footer').getByRole('link', { name: 'Aventra AS' }),
+  ).toHaveAttribute('href', 'https://aventra.no');
+});
+
+test('serves route-specific SEO metadata and a focused sitemap', async ({
+  page,
+  request,
+}) => {
+  await page.goto(basePath + '/docs/configuration');
+  await expect(page).toHaveTitle('Configuration | next-intent');
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    new RegExp(basePath + '/docs/configuration$'),
+  );
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    'content',
+    'Configuration | next-intent',
+  );
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+    'content',
+    'summary_large_image',
+  );
+  const breadcrumb = await page
+    .locator('script[type="application/ld+json"]')
+    .textContent();
+  expect(JSON.parse(breadcrumb!)['@type']).toBe('BreadcrumbList');
+  const sitemap = await request.get(basePath + '/sitemap.xml');
+  expect(sitemap.ok()).toBe(true);
+  const xml = await sitemap.text();
+  expect(xml).toContain(basePath + '/docs/configuration');
+  expect(xml).not.toContain('/destination/');
+  await page.goto(basePath + '/destination/atlas');
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+    'content',
+    /noindex/,
+  );
+  const image = await request.get(basePath + '/opengraph-image');
+  expect(image.ok()).toBe(true);
+  expect(image.headers()['content-type']).toContain('image/png');
+});
