@@ -17,7 +17,7 @@ export function pageMetadata(
   path: string,
 ): Metadata {
   return {
-    title,
+    title: { absolute: `${title} | next-intent` },
     description,
     alternates: { canonical: siteUrl(path) },
     openGraph: {

@@ -336,6 +336,10 @@ test('serves route-specific SEO metadata and a focused sitemap', async ({
   page,
   request,
 }) => {
+  await page.goto(basePath + '/');
+  await expect(page).toHaveTitle(
+    'Predictive prefetching for Next.js | next-intent',
+  );
   await page.goto(basePath + '/docs/configuration');
   await expect(page).toHaveTitle('Configuration | next-intent');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
