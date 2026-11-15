@@ -7,20 +7,39 @@ import type {
   Rect,
 } from './types.js';
 
+export const predictionPresets = Object.freeze({
+  conservative: Object.freeze({
+    horizonMs: 120,
+    minSpeed: 0.1,
+    padding: 2,
+    threshold: 0.8,
+  }),
+  balanced: Object.freeze({
+    horizonMs: 200,
+    minSpeed: 0.08,
+    padding: 8,
+    threshold: 0.6,
+  }),
+  aggressive: Object.freeze({
+    horizonMs: 350,
+    minSpeed: 0.05,
+    padding: 16,
+    threshold: 0.4,
+  }),
+});
+
 export const predictionDefaults = Object.freeze({
-  mode: 'smart' as const,
-  horizonMs: 200,
-  minSpeed: 0.08,
-  padding: 8,
-  threshold: 0.6,
+  mode: 'balanced' as const,
+  ...predictionPresets.balanced,
 });
 
 export function resolvePredictionOptions(
   options: PredictionOptions = {},
 ): Required<PredictionOptions> {
-  const config = { ...predictionDefaults, ...options };
-  if (config.mode !== 'simple' && config.mode !== 'smart')
-    throw new RangeError('mode must be simple or smart');
+  const mode = options.mode ?? predictionDefaults.mode;
+  if (mode !== 'conservative' && mode !== 'balanced' && mode !== 'aggressive')
+    throw new RangeError('mode must be conservative, balanced, or aggressive');
+  const config = { ...predictionPresets[mode], ...options, mode };
   for (const key of [
     'horizonMs',
     'minSpeed',
@@ -79,9 +98,8 @@ export function predictIntent<T extends IntentTarget>(
   options: PredictionOptions = {},
 ): IntentPrediction<T> | null {
   const config = resolvePredictionOptions(options);
-  const minimum = config.mode === 'smart' ? 3 : 2;
-  const recent = samples.slice(-6);
-  if (recent.length < minimum || targets.length === 0) return null;
+  const recent = samples.slice(-12);
+  if (recent.length < 2 || targets.length === 0) return null;
   const segments: { x: number; y: number; speed: number; dt: number }[] = [];
   for (let i = 0; i < recent.length; i++) {
     const sample = recent[i]!;
@@ -92,44 +110,44 @@ export function predictIntent<T extends IntentTarget>(
     if (dt <= 0 || dt > 150) return null;
     const x = (sample.x - previous.x) / dt;
     const y = (sample.y - previous.y) / dt;
-    segments.push({ x, y, speed: Math.hypot(x, y), dt });
+    const speed = Math.hypot(x, y);
+    if (!Number.isFinite(speed)) return null;
+    segments.push({ x, y, speed, dt });
   }
   const latest = segments.at(-1)!;
   if (latest.speed < config.minSpeed || latest.speed === 0) return null;
-  let velocity: Point = { x: latest.x, y: latest.y };
-  let stability = 1;
-  let deceleration = 0;
-  if (config.mode === 'smart') {
-    let sumX = 0;
-    let sumY = 0;
-    let sumSpeed = 0;
-    let weights = 0;
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i]!;
-      const weight = (i + 1) ** 2;
-      sumX += segment.x * weight;
-      sumY += segment.y * weight;
-      sumSpeed += segment.speed * weight;
-      weights += weight;
+  let sumX = 0;
+  let sumY = 0;
+  let sumSpeed = 0;
+  let weights = 0;
+  let ageMs = 0;
+  let included = 0;
+  let sharpTurn = false;
+  // Weight elapsed time, not event count: mouse polling rates and frame timing vary.
+  for (let i = segments.length - 1; i >= 0 && ageMs < 64; i--) {
+    const segment = segments[i]!;
+    if (segment.speed === 0) break;
+    const alignment =
+      (segment.x * latest.x + segment.y * latest.y) /
+      (segment.speed * latest.speed);
+    if (alignment < 0.5) {
+      sharpTurn = true;
+      break;
     }
-    const magnitude = Math.hypot(sumX, sumY);
-    if (magnitude === 0 || sumSpeed === 0) return null;
-    const alignment = Math.max(
-      0,
-      (sumX * latest.x + sumY * latest.y) / (magnitude * latest.speed),
-    );
-    stability = (magnitude / sumSpeed) * alignment;
-    velocity = { x: sumX / weights, y: sumY / weights };
-    const previous = segments.at(-2)!;
-    deceleration = Math.max(
-      0,
-      (previous.speed - latest.speed) / ((previous.dt + latest.dt) / 2),
-    );
+    const weight = segment.dt * Math.exp(-ageMs / 24);
+    sumX += segment.x * weight;
+    sumY += segment.y * weight;
+    sumSpeed += segment.speed * weight;
+    weights += weight;
+    ageMs += segment.dt;
+    included++;
   }
-  // Use the current speed for arrival estimates, even when smoothing direction.
-  const magnitude = Math.hypot(velocity.x, velocity.y);
-  if (magnitude === 0) return null;
-  const direction = { x: velocity.x / magnitude, y: velocity.y / magnitude };
+  const magnitude = Math.hypot(sumX, sumY);
+  if (!Number.isFinite(magnitude) || magnitude === 0) return null;
+  let stability = Math.min(1, magnitude / sumSpeed);
+  if (sharpTurn && included === 1) stability *= 0.5;
+  const direction = { x: sumX / magnitude, y: sumY / magnitude };
+  const speed = magnitude / weights;
   const origin = recent.at(-1)!;
   let winner: IntentPrediction<T> | null = null;
   for (const target of targets) {
@@ -144,13 +162,8 @@ export function predictIntent<T extends IntentTarget>(
       continue;
     const distance = intersect(origin, direction, rect, config.padding);
     if (distance === null) continue;
-    let timeToTarget = distance / latest.speed;
-    if (deceleration > 1e-8) {
-      const discriminant = latest.speed ** 2 - 2 * deceleration * distance;
-      if (discriminant < 0) continue;
-      // Rationalized quadratic root avoids cancellation for small distances.
-      timeToTarget = (2 * distance) / (latest.speed + Math.sqrt(discriminant));
-    }
+    // Do not treat a single speed dip as a physical stop: hand motion is not ballistic.
+    const timeToTarget = distance / speed;
     if (timeToTarget > config.horizonMs) continue;
     const confidence = Math.min(
       1,
@@ -173,8 +186,8 @@ export function predictIntent<T extends IntentTarget>(
         ),
       },
       velocity: {
-        x: direction.x * latest.speed,
-        y: direction.y * latest.speed,
+        x: direction.x * speed,
+        y: direction.y * speed,
       },
     };
   }

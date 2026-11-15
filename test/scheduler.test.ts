@@ -177,10 +177,33 @@ describe('request scheduling', () => {
 });
 
 describe('browser options', () => {
-  it('defaults to smart mode and stable intent', () =>
-    expect(resolveOptions().minIntentMs).toBe(24));
-  it('simple mode acts immediately by default', () =>
-    expect(resolveOptions({ mode: 'simple' }).minIntentMs).toBe(0));
+  it('defaults to balanced mode without an extra delay', () =>
+    expect(resolveOptions().minIntentMs).toBe(0));
+  it('balanced mode acts immediately by default', () =>
+    expect(resolveOptions({ mode: 'balanced' }).minIntentMs).toBe(0));
+  it.each([
+    ['conservative', 24, 3],
+    ['balanced', 0, 6],
+    ['aggressive', 0, 12],
+  ] as const)(
+    'sets the %s request budget',
+    (mode, minIntentMs, maxPrefetches) => {
+      expect(resolveOptions({ mode })).toMatchObject({
+        minIntentMs,
+        maxPrefetches,
+      });
+    },
+  );
+  it('lets explicit configuration override a preset', () => {
+    expect(
+      resolveOptions({
+        mode: 'conservative',
+        minIntentMs: 0,
+        maxPrefetches: 9,
+        horizonMs: 400,
+      }),
+    ).toMatchObject({ minIntentMs: 0, maxPrefetches: 9, horizonMs: 400 });
+  });
   it.each([
     'minIntentMs',
     'cooldownMs',

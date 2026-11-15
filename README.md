@@ -79,16 +79,24 @@ It requires a mounted `NextIntent` or `useNextIntent`. You can also use standard
 Plain anchors are eligible for prediction, but retain normal browser navigation.
 For Next.js client navigation, use `Link` or `IntentLink`.
 
-## Prediction modes
+## Prefetch aggressiveness
 
-| Mode              | Behavior                                                                                                                            | Useful for                                      |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `smart` (default) | Smooths recent direction, penalizes turns, estimates stopping distance during deceleration, and requires a stable target for 24 ms. | General navigation and menus with nearby links. |
-| `simple`          | Projects the latest velocity along a straight line and acts immediately.                                                            | Predictable layouts and experimentation.        |
+All modes use the same cursor predictor. Choose how early it should act and how
+many speculative requests it may make:
 
-Both modes intersect the projected path with link rectangles, choose the first
-eligible target along that path, and stop looking 200 ms ahead by default. Smart
-mode uses a short motion history; it does not use a trained model.
+| Mode                 | Look-ahead | Target padding | Minimum score | Stable-target delay | Requests per 10 seconds |
+| -------------------- | ---------- | -------------- | ------------- | ------------------- | ----------------------- |
+| `conservative`       | 120 ms     | 2 px           | 0.8           | 24 ms               | 3                       |
+| `balanced` (default) | 200 ms     | 8 px           | 0.6           | 0 ms                | 6                       |
+| `aggressive`         | 350 ms     | 16 px          | 0.4           | 0 ms                | 12                      |
+
+Conservative waits for a sustained approach. Aggressive looks farther ahead and
+allows more unused requests. Balanced starts as soon as the recent motion points
+toward a link. Explicit options override the chosen preset.
+
+The predictor smooths recent motion using elapsed time, so differences in mouse
+polling rate and event timing have less influence. It adapts after turns and
+stops when the cursor stops.
 
 Predictions are guesses. Fast direction changes can produce unused requests,
 and a short lead may not cover network latency. The score is a heuristic, not a
@@ -105,7 +113,7 @@ import { NextIntent } from 'next-intent';
 export function Intent() {
   return (
     <NextIntent
-      mode="smart"
+      mode="balanced"
       horizonMs={240}
       threshold={0.7}
       maxPrefetches={4}
@@ -119,26 +127,26 @@ export function Intent() {
 Function props belong in a Client Component. Mount this configured component
 instead of a second `NextIntent`.
 
-| Option            | Default                 | Meaning                                                                           |
-| ----------------- | ----------------------- | --------------------------------------------------------------------------------- |
-| `enabled`         | `true`                  | Enable prediction and hover/focus fallback.                                       |
-| `mode`            | `'smart'`               | Prediction algorithm.                                                             |
-| `horizonMs`       | `200`                   | Maximum projected arrival time, in milliseconds.                                  |
-| `minSpeed`        | `0.08`                  | Minimum mouse speed, in CSS pixels per millisecond.                               |
-| `padding`         | `8`                     | Extra prediction area around each link, in CSS pixels.                            |
-| `threshold`       | `0.6`                   | Minimum prediction score, between 0 and 1.                                        |
-| `minIntentMs`     | `24` smart / `0` simple | How long a predicted destination must stay stable across movement frames.         |
-| `hover`           | `true`                  | Prefetch on mouse hover when prediction did not already do so.                    |
-| `focus`           | `true`                  | Prefetch on focus, including keyboard navigation.                                 |
-| `respectSaveData` | `true`                  | Skip requests when Save-Data or a 2G connection is reported.                      |
-| `cooldownMs`      | `30000`                 | Local deduplication lifetime; independent of the Next.js cache lifetime.          |
-| `maxPrefetches`   | `6`                     | Maximum request attempts in the rolling budget window. Zero pauses requests.      |
-| `budgetWindowMs`  | `10000`                 | Request budget window, in milliseconds.                                           |
-| `maxEntries`      | `256`                   | Maximum remembered destinations. Oldest entries are evicted first.                |
-| `root`            | `document`              | A document or element whose links should be observed.                             |
-| `filter`          | —                       | `(href, element) => boolean`, applied before prefetch. Throwing rejects the link. |
-| `onIntent`        | —                       | Receives `{ href, element, reason, prediction? }` when a request is submitted.    |
-| `onError`         | —                       | Receives `(error, event)` for adapter failures or a throwing `onIntent` callback. |
+| Option            | Default                  | Meaning                                                                           |
+| ----------------- | ------------------------ | --------------------------------------------------------------------------------- |
+| `enabled`         | `true`                   | Enable prediction and hover/focus fallback.                                       |
+| `mode`            | `'balanced'`             | Prefetch aggressiveness preset.                                                   |
+| `horizonMs`       | `200`                    | Maximum projected arrival time, in milliseconds.                                  |
+| `minSpeed`        | `0.08`                   | Minimum mouse speed, in CSS pixels per millisecond.                               |
+| `padding`         | `8`                      | Extra prediction area around each link, in CSS pixels.                            |
+| `threshold`       | `0.6`                    | Minimum prediction score, between 0 and 1.                                        |
+| `minIntentMs`     | `0` (conservative: `24`) | How long a predicted destination must stay stable across movement frames.         |
+| `hover`           | `true`                   | Prefetch on mouse hover when prediction did not already do so.                    |
+| `focus`           | `true`                   | Prefetch on focus, including keyboard navigation.                                 |
+| `respectSaveData` | `true`                   | Skip requests when Save-Data or a 2G connection is reported.                      |
+| `cooldownMs`      | `30000`                  | Local deduplication lifetime; independent of the Next.js cache lifetime.          |
+| `maxPrefetches`   | `6`                      | Maximum attempts per window. Presets use 3 / 6 / 12. Zero pauses requests.        |
+| `budgetWindowMs`  | `10000`                  | Request budget window, in milliseconds.                                           |
+| `maxEntries`      | `256`                    | Maximum remembered destinations. Oldest entries are evicted first.                |
+| `root`            | `document`               | A document or element whose links should be observed.                             |
+| `filter`          | —                        | `(href, element) => boolean`, applied before prefetch. Throwing rejects the link. |
+| `onIntent`        | —                        | Receives `{ href, element, reason, prediction? }` when a request is submitted.    |
+| `onError`         | —                        | Receives `(error, event)` for adapter failures or a throwing `onIntent` callback. |
 
 `prediction` contains the target, score (`confidence`), estimated arrival time,
 projected point, and velocity. `onIntent` reports a request submission, not

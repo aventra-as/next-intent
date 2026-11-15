@@ -19,9 +19,10 @@ export interface IntentTarget {
   rect: Rect;
 }
 
-export type PredictionMode = 'simple' | 'smart';
+export type PredictionMode = 'conservative' | 'balanced' | 'aggressive';
 
 export interface PredictionOptions {
+  /** Prefetch aggressiveness. Default: balanced. Explicit options override the preset. */
   mode?: PredictionMode;
   /** Maximum look-ahead in milliseconds. Default: 200. */
   horizonMs?: number;

@@ -36,11 +36,11 @@ export interface IntentOptions extends PredictionOptions {
   focus?: boolean;
   /** Skip speculation on Save-Data and slow-2g/2g connections. Default: true. */
   respectSaveData?: boolean;
-  /** Time a predicted destination must remain stable. Smart: 24ms; simple: 0ms. */
+  /** Stable-target delay. Conservative: 24ms; balanced/aggressive: 0ms. */
   minIntentMs?: number;
   /** Suppress repeat requests for this long unless invalidated. Default: 30,000ms. */
   cooldownMs?: number;
-  /** Request attempts allowed per rolling budget window. Default: 6. */
+  /** Request attempts per rolling window. Conservative: 3; balanced: 6; aggressive: 12. */
   maxPrefetches?: number;
   /** Rolling request budget window. Default: 10,000ms. */
   budgetWindowMs?: number;

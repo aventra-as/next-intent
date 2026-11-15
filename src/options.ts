@@ -1,8 +1,15 @@
 import { resolvePredictionOptions } from './core/predict.js';
 import type { IntentOptions } from './types.js';
 
+const requestPresets = {
+  conservative: { minIntentMs: 24, maxPrefetches: 3 },
+  balanced: { minIntentMs: 0, maxPrefetches: 6 },
+  aggressive: { minIntentMs: 0, maxPrefetches: 12 },
+};
+
 export function resolveOptions(options: IntentOptions = {}) {
   const prediction = resolvePredictionOptions(options);
+  const preset = requestPresets[prediction.mode];
   const config = {
     ...options,
     ...prediction,
@@ -10,9 +17,9 @@ export function resolveOptions(options: IntentOptions = {}) {
     hover: options.hover ?? true,
     focus: options.focus ?? true,
     respectSaveData: options.respectSaveData ?? true,
-    minIntentMs: options.minIntentMs ?? (prediction.mode === 'smart' ? 24 : 0),
+    minIntentMs: options.minIntentMs ?? preset.minIntentMs,
     cooldownMs: options.cooldownMs ?? 30_000,
-    maxPrefetches: options.maxPrefetches ?? 6,
+    maxPrefetches: options.maxPrefetches ?? preset.maxPrefetches,
     budgetWindowMs: options.budgetWindowMs ?? 10_000,
     maxEntries: options.maxEntries ?? 256,
   };

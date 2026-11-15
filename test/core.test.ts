@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { predictIntent, predictionDefaults } from '../src/core/index.js';
+import {
+  predictIntent,
+  predictionDefaults,
+  predictionPresets,
+} from '../src/core/index.js';
 import type { PointerSample, PredictionOptions } from '../src/core/index.js';
 
 const path = [
@@ -14,7 +18,7 @@ const target = {
 };
 
 describe('predictIntent', () => {
-  it.each(['simple', 'smart'] as const)(
+  it.each(['conservative', 'balanced', 'aggressive'] as const)(
     'predicts a target before hover in %s mode',
     (mode) => {
       const result = predictIntent(path, [target], { mode, padding: 0 });
@@ -22,23 +26,25 @@ describe('predictIntent', () => {
       expect(result?.timeToTarget).toBe(80);
       expect(result?.velocity).toEqual({ x: 1, y: 0 });
       expect(result?.point).toEqual({ x: 100, y: 50 });
-      expect(result?.confidence).toBeCloseTo(0.9);
+      expect(result?.confidence).toBeCloseTo(
+        1 - (0.25 * 80) / predictionPresets[mode].horizonMs,
+      );
     },
   );
   it('has immutable public defaults', () => {
     expect(Object.isFrozen(predictionDefaults)).toBe(true);
-    expect(predictionDefaults.mode).toBe('smart');
+    expect(predictionDefaults.mode).toBe('balanced');
+    expect(Object.isFrozen(predictionPresets.conservative)).toBe(true);
   });
-  it.each([
-    { samples: [] },
-    { samples: path.slice(0, 1) },
-    { samples: path.slice(0, 2) },
-  ])('requires enough history for smart mode: $samples', ({ samples }) => {
-    expect(predictIntent(samples, [target])).toBeNull();
-  });
-  it('simple mode needs only two samples', () =>
+  it.each([{ samples: [] }, { samples: path.slice(0, 1) }])(
+    'requires two samples: $samples',
+    ({ samples }) => {
+      expect(predictIntent(samples, [target])).toBeNull();
+    },
+  );
+  it('can predict after two samples', () =>
     expect(
-      predictIntent(path.slice(-2), [target], { mode: 'simple' }),
+      predictIntent(path.slice(-2), [target], { mode: 'balanced' }),
     ).not.toBeNull());
   it('returns null without targets', () =>
     expect(predictIntent(path, [])).toBeNull());
@@ -158,20 +164,22 @@ describe('predictIntent', () => {
           { x: 10, y: 50, time: dt },
         ],
         [target],
-        { mode: 'simple' },
+        { mode: 'balanced' },
       ),
     ).toBeNull();
   });
-  it('rejects reversal in smart mode', () => {
+  it('waits for a consistent direction after a reversal in balanced mode', () => {
     const samples = [
       { x: 50, y: 50, time: 0 },
       { x: 0, y: 50, time: 10 },
       { x: 10, y: 50, time: 20 },
     ];
     expect(predictIntent(samples, [target])).toBeNull();
-    expect(predictIntent(samples, [target], { mode: 'simple' })).not.toBeNull();
+    expect(
+      predictIntent(samples, [target], { mode: 'aggressive' }),
+    ).not.toBeNull();
   });
-  it('handles perfectly cancelling weighted direction', () => {
+  it('does not trust one sample immediately after a sharp turn', () => {
     const samples = [
       { x: 40, y: 50, time: 0 },
       { x: 0, y: 50, time: 10 },
@@ -179,16 +187,17 @@ describe('predictIntent', () => {
     ];
     expect(predictIntent(samples, [target])).toBeNull();
   });
-  it('does not project past the stopping distance when decelerating', () => {
+  it('keeps predicting through a speed dip instead of extrapolating a stop', () => {
     const samples = [
       { x: 0, y: 50, time: 0 },
       { x: 20, y: 50, time: 10 },
       { x: 30, y: 50, time: 20 },
     ];
-    expect(predictIntent(samples, [target])).toBeNull();
-    expect(predictIntent(samples, [target], { mode: 'simple' })).not.toBeNull();
+    expect(
+      predictIntent(samples, [target], { mode: 'balanced' }),
+    ).not.toBeNull();
   });
-  it('estimates arrival under gentle deceleration', () => {
+  it('smooths the arrival estimate during a small speed change', () => {
     const samples = [
       { x: 0, y: 50, time: 0 },
       { x: 11, y: 50, time: 10 },
@@ -196,17 +205,20 @@ describe('predictIntent', () => {
     ];
     const close = { rect: { left: 40, right: 60, top: 30, bottom: 70 } };
     const result = predictIntent(samples, [close], { padding: 0 });
-    expect(result?.timeToTarget).toBeGreaterThan(19);
-    expect(result?.timeToTarget).toBeLessThan(30);
+    expect(result?.timeToTarget).toBeGreaterThan(17);
+    expect(result?.timeToTarget).toBeLessThan(19);
   });
-  it('limits history to six recent samples', () => {
-    const recent = Array.from({ length: 6 }, (_, i) => ({
+  it('limits history to twelve recent samples', () => {
+    const recent = Array.from({ length: 12 }, (_, i) => ({
       x: i * 10,
       y: 50,
       time: i * 10,
     }));
     expect(
-      predictIntent([{ x: NaN, y: NaN, time: -1 }, ...recent], [target]),
+      predictIntent(
+        [{ x: NaN, y: NaN, time: -1 }, ...recent],
+        [{ rect: { ...target.rect, left: 200, right: 240 } }],
+      ),
     ).not.toBeNull();
   });
   it('does not mutate samples, targets, or options', () => {
@@ -216,7 +228,7 @@ describe('predictIntent', () => {
     const targets = Object.freeze([
       Object.freeze({ rect: Object.freeze({ ...target.rect }) }),
     ]);
-    const options = Object.freeze({ mode: 'simple' as const });
+    const options = Object.freeze({ mode: 'balanced' as const });
     expect(() => predictIntent(samples, targets, options)).not.toThrow();
   });
   it.each([

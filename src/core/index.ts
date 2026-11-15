@@ -1,4 +1,8 @@
-export { predictIntent, predictionDefaults } from './predict.js';
+export {
+  predictIntent,
+  predictionDefaults,
+  predictionPresets,
+} from './predict.js';
 export type {
   Point,
   PointerSample,

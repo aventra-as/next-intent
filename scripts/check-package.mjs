@@ -95,7 +95,7 @@ import { useIntent } from 'next-intent/react';
 import { createIntentObserver } from 'next-intent/browser';
 import { predictIntent } from 'next-intent/core';
 export function Consumer() {
-  useNextIntent({ mode: 'smart' });
+  useNextIntent({ mode: 'balanced' });
   useIntent((href, { onInvalidate }) => { onInvalidate(); });
   return <><NextIntent /><PagesIntent /><IntentLink href="/a">Go</IntentLink></>;
 }
@@ -108,9 +108,10 @@ const target: string | undefined = prediction?.target.id;
     process.execPath,
     [
       fileURLToPath(
-        new URL('../node_modules/typescript/bin/tsc', import.meta.url),
+        new URL('../node_modules/typescript-compiler/bin/tsc', import.meta.url),
       ),
       '--noEmit',
+      '--ignoreConfig',
       '--strict',
       '--skipLibCheck',
       '--target',

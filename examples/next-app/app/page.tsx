@@ -9,111 +9,118 @@ import {
 } from 'next-intent';
 
 const destinations = [
-  { slug: 'atlas', name: 'Atlas', detail: 'Maps & places', color: 'violet' },
-  {
-    slug: 'studio',
-    name: 'Studio',
-    detail: 'Ideas & experiments',
-    color: 'green',
-  },
-  {
-    slug: 'archive',
-    name: 'Archive',
-    detail: 'Notes & collections',
-    color: 'orange',
-  },
+  { slug: 'atlas', name: 'Atlas' },
+  { slug: 'studio', name: 'Studio' },
+  { slug: 'archive', name: 'Archive' },
 ];
+const modes = [
+  {
+    value: 'conservative',
+    label: 'Conservative',
+    description: 'Waits for a sustained approach. Fewer speculative requests.',
+  },
+  {
+    value: 'balanced',
+    label: 'Balanced',
+    description: 'Prefetches as you approach a link.',
+  },
+  {
+    value: 'aggressive',
+    label: 'Aggressive',
+    description: 'Looks farther ahead and allows more speculative requests.',
+  },
+] as const;
 type LogEntry = {
   href: string;
   reason: string;
-  score: string;
   lead: string;
   beforeHover: boolean;
 };
 
 export default function Playground() {
-  const [mode, setMode] = useState<PredictionMode>('smart');
+  const [mode, setMode] = useState<PredictionMode>('balanced');
   const [enabled, setEnabled] = useState(true);
   const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [run, setRun] = useState(0);
+  const [requests, setRequests] = useState(0);
+  const [session, setSession] = useState(0);
+  function restart(nextMode: PredictionMode = mode) {
+    setMode(nextMode);
+    setEntries([]);
+    setRequests(0);
+    setSession((value) => value + 1);
+  }
   function record(event: IntentEvent) {
     const entry = {
       href: event.href,
       reason: event.reason,
-      score: event.prediction
-        ? `${Math.round(event.prediction.confidence * 100)} / 100`
-        : '—',
       lead: event.prediction
         ? `${Math.round(event.prediction.timeToTarget)} ms`
         : '—',
       beforeHover: !event.element.matches(':hover'),
     };
     setEntries((previous) => [entry, ...previous].slice(0, 8));
+    setRequests((value) => value + 1);
+  }
+  const latest = entries[0];
+  let status = 'No requests yet';
+  if (!enabled) status = 'Prefetching paused';
+  else if (latest) {
+    const label = latest.href.split('/').at(-1);
+    status = `${label} requested`;
+    if (latest.reason === 'trajectory' && latest.beforeHover)
+      status += ' before hover';
   }
   return (
     <main>
-      <NextIntent key={run} mode={mode} enabled={enabled} onIntent={record} />
+      <NextIntent
+        key={session}
+        mode={mode}
+        enabled={enabled}
+        onIntent={record}
+      />
       <header>
+        <span className="wordmark">next-intent</span>
         <a
-          className="wordmark"
+          className="github-link"
           href="https://github.com/hypervisor/next-intent"
         >
-          next-intent <span>↗</span>
+          GitHub <span aria-hidden="true">↗</span>
         </a>
-        <label className="switch">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(event) => setEnabled(event.target.checked)}
-          />{' '}
-          Prediction enabled
-        </label>
       </header>
       <section className="intro">
-        <h1>
-          A head start
-          <br />
-          on your next click.
-        </h1>
-        <p>
-          Move toward a card. Watch its route get requested before your cursor
-          arrives.
-        </p>
+        <h1>Prefetch before hover.</h1>
+        <p>Predict the next link from cursor movement. Try it below.</p>
       </section>
       <div className="toolbar">
-        <fieldset>
-          <legend>Prediction mode</legend>
-          {(['simple', 'smart'] as const).map((value) => (
-            <label key={value}>
+        <fieldset className="mode-control">
+          <legend className="sr-only">Prefetch aggressiveness</legend>
+          {modes.map(({ value, label }) => (
+            <label key={value} data-selected={mode === value}>
               <input
                 type="radio"
                 name="mode"
                 value={value}
                 checked={mode === value}
-                onChange={() => setMode(value)}
+                onChange={() => restart(value)}
               />
-              {value === 'smart' ? 'Smart' : 'Simple'}
+              {label}
             </label>
           ))}
         </fieldset>
-        <button
-          type="button"
-          onClick={() => {
-            setEntries([]);
-            setRun((value) => value + 1);
-          }}
-        >
-          Reset session ↺
+        <button type="button" onClick={() => restart()}>
+          Reset <span aria-hidden="true">↺</span>
         </button>
       </div>
+      <p className="mode-description">
+        {modes.find((preset) => preset.value === mode)?.description}
+      </p>
       <section className="arena" aria-label="Prediction playground">
-        <div className="launch">
-          <span className="start-dot" />
+        <div className="launch" aria-hidden="true">
+          <span className="start-point">↗</span>
           <span>Start here</span>
-          <span className="direction">Move toward a card →</span>
         </div>
         <div className="cards">
-          {destinations.map(({ slug, name, detail, color }) => {
+          {destinations.map(({ slug, name }) => {
             const requested = entries.some((entry) =>
               entry.href.endsWith(`/destination/${slug}`),
             );
@@ -121,29 +128,40 @@ export default function Playground() {
               <IntentLink
                 key={slug}
                 href={`/destination/${slug}`}
-                className={`card ${color}`}
+                className="card"
                 data-requested={requested}
               >
-                <div>
-                  <h2>{name}</h2>
-                  <p>{detail}</p>
-                </div>
+                <span>{name}</span>
                 <span className="card-status">
-                  {requested ? 'Prefetch requested' : '→'}
+                  {requested ? 'Requested' : '→'}
                 </span>
               </IntentLink>
             );
           })}
         </div>
       </section>
-      <section className="activity" aria-label="Prefetch activity">
-        <div className="activity-heading">
-          <h2>Prefetch activity</h2>
-          <span>{entries.length} requests</span>
+      <div className="status-line">
+        <p role="status">
+          <span className="status-dot" data-active={Boolean(latest)} />
+          {status}
+        </p>
+        <span>{requests} requests</span>
+      </div>
+      <details className="activity">
+        <summary>Request details</summary>
+        <div className="detail-toolbar">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(event) => setEnabled(event.target.checked)}
+            />{' '}
+            Prediction enabled
+          </label>
         </div>
         {entries.length === 0 ? (
-          <p className="empty" role="status">
-            Waiting for intent. Try moving steadily toward Atlas.
+          <p className="empty">
+            Requests appear here as you approach, hover, or focus a link.
           </p>
         ) : (
           <div className="table-scroll">
@@ -152,7 +170,6 @@ export default function Playground() {
                 <tr>
                   <th>Route</th>
                   <th>Trigger</th>
-                  <th>Score</th>
                   <th>Estimated arrival</th>
                   <th>Before hover</th>
                 </tr>
@@ -162,7 +179,6 @@ export default function Playground() {
                   <tr key={`${entry.href}-${index}`}>
                     <td>{entry.href}</td>
                     <td>{entry.reason}</td>
-                    <td>{entry.score}</td>
                     <td>{entry.lead}</td>
                     <td>{entry.beforeHover ? 'Yes' : 'No'}</td>
                   </tr>
@@ -171,10 +187,16 @@ export default function Playground() {
             </table>
           </div>
         )}
-      </section>
+        <p className="detail-note">
+          Switching modes or resetting starts fresh intent tracking. Next.js may
+          keep previously requested routes cached.
+        </p>
+      </details>
       <footer>
-        Requests are deduplicated for 30 seconds. Reset starts a new prediction
-        session; Next.js may still have the route cached.
+        <code>&lt;NextIntent mode="{mode}" /&gt;</code>
+        <a href="https://github.com/hypervisor/next-intent#app-router">
+          Setup guide ↗
+        </a>
       </footer>
     </main>
   );

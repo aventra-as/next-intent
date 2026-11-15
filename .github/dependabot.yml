@@ -4,6 +4,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # Compiler updates use the typescript-compiler alias. ESLint needs the 6.x JS API.
+    ignore:
+      - dependency-name: typescript
+        versions: ['>=7']
     groups:
       development:
         dependency-type: development

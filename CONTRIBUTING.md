@@ -1,7 +1,11 @@
 # Contributing
 
-Use Node.js 22.13+ or 24 and npm. Run `npm ci`, then `npm run check` before
+Use Node.js 22.22.2+, 24.15+, or 26 and npm. Run `npm ci`, then `npm run check` before
 opening a pull request. Format changes with `npm run format`.
+
+The build and package checks use TypeScript 7 through the `typescript-compiler`
+npm alias. ESLint and Next.js still consume the TypeScript 6 JavaScript API from
+`typescript`. Keep these roles separate until those tools support the newer API.
 
 The source is split into pure prediction (`src/core`), browser observation,
 request scheduling, and React/Next.js adapters. Keep the core independent of DOM

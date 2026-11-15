@@ -6,18 +6,20 @@ async function approach(page: Page) {
   const box = (await card.boundingBox())!;
   const y = box.y + box.height / 2;
   await page.mouse.move(box.x - 340, y);
-  // Remain outside the card throughout. Spaced samples model a steady approach.
-  for (let i = 0; i < 9; i++) {
-    await page.mouse.move(box.x - 300 + i * 27, y);
+  // Real mouse events with a steady approach; never enter the link's rectangle.
+  for (let i = 0; i < 12; i++) {
+    await page.mouse.move(box.x - 300 + i * 24, y);
     await page.waitForTimeout(20);
   }
   return card;
 }
-
-test('requests the route before hover in both prediction modes', async ({
-  page,
-}) => {
-  for (const mode of ['Simple', 'Smart']) {
+async function showDetails(page: Page) {
+  await page.getByText('Request details', { exact: true }).click();
+}
+for (const mode of ['Conservative', 'Balanced', 'Aggressive']) {
+  test(`requests the route before hover in ${mode.toLowerCase()} mode`, async ({
+    page,
+  }) => {
     await page.goto(basePath + '/');
     await page.getByRole('radio', { name: mode, exact: true }).check();
     const request = page.waitForRequest(
@@ -30,14 +32,18 @@ test('requests the route before hover in both prediction modes', async ({
     expect(await card.evaluate((element) => element.matches(':hover'))).toBe(
       false,
     );
+    await expect(page.getByRole('status')).toHaveText(
+      'atlas requested before hover',
+    );
+    await showDetails(page);
     await expect(
       page.getByRole('cell', { name: 'trajectory', exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole('cell', { name: 'Yes', exact: true }),
     ).toBeVisible();
-  }
-});
+  });
+}
 
 test('does not request untouched routes merely because they are visible', async ({
   page,
@@ -54,9 +60,9 @@ test('does not request untouched routes merely because they are visible', async 
 test('keeps Next.js navigation working after prefetch', async ({ page }) => {
   await page.goto(basePath + '/');
   const card = await approach(page);
-  await expect(
-    page.getByRole('cell', { name: 'trajectory', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('status')).toHaveText(
+    'atlas requested before hover',
+  );
   await card.click();
   await expect(page).toHaveURL(new RegExp(basePath + '/destination/atlas$'));
   await expect(
@@ -64,13 +70,15 @@ test('keeps Next.js navigation working after prefetch', async ({ page }) => {
   ).toBeVisible();
   await page.getByRole('link', { name: /Back to the playground/ }).click();
   await expect(
-    page.getByRole('heading', { name: /A head start/ }),
+    page.getByRole('heading', { name: 'Prefetch before hover.' }),
   ).toBeVisible();
 });
 
 test('supports keyboard focus', async ({ page }) => {
   await page.goto(basePath + '/');
   await page.getByRole('link', { name: /Studio/ }).focus();
+  await expect(page.getByRole('status')).toHaveText('studio requested');
+  await showDetails(page);
   await expect(
     page.getByRole('cell', { name: 'focus', exact: true }),
   ).toBeVisible();
@@ -78,9 +86,38 @@ test('supports keyboard focus', async ({ page }) => {
 
 test('can disable prediction', async ({ page }) => {
   await page.goto(basePath + '/');
+  await showDetails(page);
   await page.getByRole('checkbox', { name: 'Prediction enabled' }).uncheck();
   await approach(page);
   await expect(page.getByText('0 requests', { exact: true })).toBeVisible();
+});
+
+test('switching modes resets the request history', async ({ page }) => {
+  await page.goto(basePath + '/');
+  await approach(page);
+  await expect(page.getByRole('status')).toHaveText(
+    'atlas requested before hover',
+  );
+  await page.getByRole('radio', { name: 'Aggressive', exact: true }).check();
+  await expect(page.getByText('0 requests', { exact: true })).toBeVisible();
+  await approach(page);
+  await expect(page.getByRole('status')).toHaveText(
+    'atlas requested before hover',
+  );
+});
+
+test('reset permits the same link to be predicted again', async ({ page }) => {
+  await page.goto(basePath + '/');
+  await approach(page);
+  await expect(page.getByRole('status')).toHaveText(
+    'atlas requested before hover',
+  );
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.getByText('0 requests', { exact: true })).toBeVisible();
+  await approach(page);
+  await expect(page.getByRole('status')).toHaveText(
+    'atlas requested before hover',
+  );
 });
 
 test('hydrates without runtime errors and fits a phone viewport', async ({
@@ -91,7 +128,7 @@ test('hydrates without runtime errors and fits a phone viewport', async ({
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(basePath + '/');
   await expect(
-    page.getByRole('heading', { name: /A head start/ }),
+    page.getByRole('heading', { name: 'Prefetch before hover.' }),
   ).toBeVisible();
   expect(
     await page.evaluate(

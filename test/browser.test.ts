@@ -65,7 +65,7 @@ function setup(options: IntentOptions = {}) {
   const prefetch = vi.fn();
   const onIntent = vi.fn();
   const observer = createIntentObserver(prefetch, {
-    mode: 'simple',
+    mode: 'balanced',
     onIntent,
     ...options,
   });
@@ -125,15 +125,14 @@ describe('browser integration', () => {
     flush();
     expect(s.prefetch).toHaveBeenCalledOnce();
   });
-  it('waits for a stable smart prediction', () => {
+  it('waits for sustained intent in conservative mode', () => {
     anchor();
-    const s = setup({ mode: 'smart' });
+    const s = setup({ mode: 'conservative' });
     approach();
     expect(s.prefetch).not.toHaveBeenCalled();
     move(30);
-    move(40);
     expect(s.prefetch).not.toHaveBeenCalled();
-    move(50);
+    move(40);
     expect(s.prefetch).toHaveBeenCalledOnce();
   });
   it.each(['touch', 'pen', ''])(
@@ -282,7 +281,7 @@ describe('browser integration', () => {
     const s = setup({ enabled: false });
     approach();
     expect(s.prefetch).not.toHaveBeenCalled();
-    s.observer.update({ mode: 'simple' });
+    s.observer.update({ mode: 'balanced' });
     approach();
     expect(s.prefetch).toHaveBeenCalledOnce();
   });
@@ -290,7 +289,7 @@ describe('browser integration', () => {
     anchor();
     const s = setup();
     approach();
-    s.observer.update({ mode: 'simple', padding: 2 });
+    s.observer.update({ mode: 'balanced', padding: 2 });
     approach();
     expect(s.prefetch).toHaveBeenCalledOnce();
   });
@@ -497,7 +496,7 @@ describe('browser integration', () => {
   });
   it('clears pending intent after moving away', () => {
     anchor();
-    const s = setup({ mode: 'smart', minIntentMs: 30 });
+    const s = setup({ mode: 'balanced', minIntentMs: 30 });
     approach();
     move(10);
     move(0);
