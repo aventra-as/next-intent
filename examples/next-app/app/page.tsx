@@ -1,12 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  IntentLink,
-  NextIntent,
-  type IntentEvent,
-  type PredictionMode,
-} from 'next-intent';
+import { IntentLink, type IntentEvent, type PredictionMode } from 'next-intent';
+import { PredictionOverlay } from './prediction-overlay';
+import { predictionPresets } from 'next-intent/core';
 
 const destinations = [
   { slug: 'atlas', name: 'Atlas' },
@@ -72,12 +69,6 @@ export default function Playground() {
   }
   return (
     <main>
-      <NextIntent
-        key={session}
-        mode={mode}
-        enabled={enabled}
-        onIntent={record}
-      />
       <header>
         <span className="wordmark">next-intent</span>
         <a
@@ -115,6 +106,12 @@ export default function Playground() {
         {modes.find((preset) => preset.value === mode)?.description}
       </p>
       <section className="arena" aria-label="Prediction playground">
+        <PredictionOverlay
+          key={session}
+          mode={mode}
+          enabled={enabled}
+          onIntent={record}
+        />
         <div className="launch" aria-hidden="true">
           <span className="start-point">↗</span>
           <span>Start here</span>
@@ -133,19 +130,34 @@ export default function Playground() {
               >
                 <span>{name}</span>
                 <span className="card-status">
-                  {requested ? 'Requested' : '→'}
+                  <span className="card-prediction">Predicted</span>
+                  <span className="card-request">
+                    {requested ? 'Requested' : '→'}
+                  </span>
                 </span>
               </IntentLink>
             );
           })}
         </div>
       </section>
+      <div className="prediction-legend">
+        <span>
+          <i className="legend-path" aria-hidden="true" />
+          Projected path · {predictionPresets[mode].horizonMs} ms
+        </span>
+        <span>
+          <i className="legend-target" aria-hidden="true" />
+          Predicted target
+        </span>
+      </div>
       <div className="status-line">
         <p role="status">
           <span className="status-dot" data-active={Boolean(latest)} />
           {status}
         </p>
-        <span>{requests} requests</span>
+        <span>
+          {requests} {requests === 1 ? 'request' : 'requests'}
+        </span>
       </div>
       <details className="activity">
         <summary>Request details</summary>

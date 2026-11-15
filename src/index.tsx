@@ -16,6 +16,7 @@ import type { IntentOptions } from './types.js';
 export type {
   IntentOptions,
   IntentEvent,
+  PredictionFrame,
   Prefetch,
   PrefetchContext,
 } from './types.js';

@@ -6,7 +6,7 @@ import { useIntent } from './react.js';
 import type { IntentOptions } from './types.js';
 import { stripBasePath } from './links.js';
 
-export type { IntentOptions, IntentEvent } from './types.js';
+export type { IntentOptions, IntentEvent, PredictionFrame } from './types.js';
 
 export function useNextIntent(options: IntentOptions = {}): void {
   const router = useRouter();

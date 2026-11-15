@@ -137,3 +137,106 @@ test('hydrates without runtime errors and fits a phone viewport', async ({
   ).toBe(true);
   expect(errors).toEqual([]);
 });
+
+for (const mode of ['Conservative', 'Balanced', 'Aggressive']) {
+  test(`shows a live path and target before hover in ${mode.toLowerCase()} mode`, async ({
+    page,
+  }) => {
+    await page.goto(basePath + '/');
+    await page.getByRole('radio', { name: mode, exact: true }).check();
+    const card = page.getByRole('link', { name: /Atlas/ });
+    const box = (await card.boundingBox())!;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x - 340, y);
+    let sawPrediction = false;
+    for (let i = 0; i < 12; i++) {
+      await page.mouse.move(box.x - 300 + i * 24, y);
+      await page.waitForTimeout(20);
+      const live = await card.evaluate((element) => {
+        const overlay = document.querySelector('.prediction-overlay')!;
+        const path = overlay.querySelector('line')!;
+        return {
+          predicted: element.getAttribute('data-predicted') === 'true',
+          hovered: element.matches(':hover'),
+          active: overlay.getAttribute('data-active') === 'true',
+          forward:
+            Number(path.getAttribute('x2')) > Number(path.getAttribute('x1')),
+          landing: overlay
+            .querySelector('.landing-point')
+            ?.getAttribute('visibility'),
+        };
+      });
+      if (live.predicted) {
+        expect(live.hovered).toBe(false);
+        expect(live.active).toBe(true);
+        expect(live.forward).toBe(true);
+        expect(live.landing).toBe('visible');
+        if (
+          !sawPrediction &&
+          mode === 'Balanced' &&
+          process.env.DEMO_SCREENSHOT
+        ) {
+          await page.screenshot({
+            path: process.env.DEMO_SCREENSHOT,
+            fullPage: true,
+            animations: 'disabled',
+          });
+        }
+        sawPrediction = true;
+      }
+    }
+    expect(sawPrediction).toBe(true);
+    // A stationary cursor must not leave the previous guess looking live.
+    await expect(page.locator('.prediction-overlay')).toHaveAttribute(
+      'data-active',
+      'false',
+    );
+    await expect(card).not.toHaveAttribute('data-predicted', 'true');
+    await expect(card).toContainText('Requested');
+  });
+}
+
+test('keeps showing predictions for an already requested route, and clears on reset', async ({
+  page,
+}) => {
+  await page.goto(basePath + '/');
+  const card = await approach(page);
+  await expect(card).toHaveAttribute('data-requested', 'true');
+  await approach(page);
+  await expect(card).toHaveAttribute('data-predicted', 'true');
+  await expect(page.getByText('1 request', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(card).not.toHaveAttribute('data-predicted', 'true');
+  await expect(page.locator('.prediction-overlay')).toHaveAttribute(
+    'data-active',
+    'false',
+  );
+});
+
+test('shows a neutral projection when moving away from the links', async ({
+  page,
+}) => {
+  await page.goto(basePath + '/');
+  const arena = (await page
+    .getByRole('region', { name: 'Prediction playground' })
+    .boundingBox())!;
+  const x = arena.x + 160;
+  const y = arena.y + 100;
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(20);
+  await page.mouse.move(x - 20, y);
+  await expect(page.locator('.prediction-overlay')).toHaveAttribute(
+    'data-active',
+    'true',
+  );
+  await expect(page.locator('.prediction-overlay')).toHaveAttribute(
+    'data-target',
+    'false',
+  );
+  await expect(page.locator('[data-predicted="true"]')).toHaveCount(0);
+  await page.mouse.move(10, 10);
+  await expect(page.locator('.prediction-overlay')).toHaveAttribute(
+    'data-active',
+    'false',
+  );
+});

@@ -564,3 +564,173 @@ describe('browser integration', () => {
     expect(disconnect).toHaveBeenCalledOnce();
   });
 });
+
+describe('live prediction frames', () => {
+  beforeEach(() =>
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }),
+  );
+  afterEach(() => vi.useRealTimers());
+
+  it('reports the same visible target as the prefetch scheduler before hover', () => {
+    const a = anchor();
+    const onPrediction = vi.fn();
+    const s = setup({ onPrediction });
+    approach();
+    expect(onPrediction).toHaveBeenLastCalledWith({
+      origin: { x: 20, y: 50 },
+      projected: { x: 220, y: 50 },
+      prediction: expect.objectContaining({
+        target: expect.objectContaining({ element: a }),
+      }),
+    });
+    expect(onPrediction.mock.calls[0]![0].prediction).toEqual(
+      s.onIntent.mock.calls[0]![0].prediction,
+    );
+    expect(s.prefetch).toHaveBeenCalledOnce();
+    expect(onPrediction).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['conservative', 120],
+    ['balanced', 200],
+    ['aggressive', 350],
+  ] as const)(
+    'projects the %s look-ahead even when there is no eligible target',
+    (mode, horizon) => {
+      const onPrediction = vi.fn();
+      const s = setup({ mode, onPrediction });
+      approach();
+      expect(onPrediction).toHaveBeenLastCalledWith({
+        origin: { x: 20, y: 50 },
+        projected: { x: 20 + horizon, y: 50 },
+        prediction: null,
+      });
+      expect(s.prefetch).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses an explicit look-ahead override', () => {
+    const onPrediction = vi.fn();
+    setup({ mode: 'aggressive', horizonMs: 80, onPrediction });
+    approach();
+    expect(onPrediction.mock.lastCall![0].projected).toEqual({ x: 100, y: 50 });
+  });
+
+  it('reports targets before the stable-target delay and despite an exhausted budget', () => {
+    anchor();
+    const onPrediction = vi.fn();
+    const s = setup({ onPrediction, minIntentMs: 100, maxPrefetches: 0 });
+    approach();
+    expect(onPrediction.mock.lastCall![0].prediction.target.href).toBe('/a');
+    expect(s.prefetch).not.toHaveBeenCalled();
+    move(30);
+    expect(onPrediction).toHaveBeenCalledTimes(3);
+  });
+
+  it('excludes occluded targets from the visualization', () => {
+    anchor();
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: () => document.body,
+    });
+    const onPrediction = vi.fn();
+    setup({ onPrediction });
+    approach();
+    expect(onPrediction.mock.lastCall![0].prediction).toBeNull();
+  });
+
+  it('clears stale motion after the mouse stops and resumes from fresh samples', () => {
+    anchor();
+    const onPrediction = vi.fn();
+    setup({ onPrediction });
+    approach();
+    vi.advanceTimersByTime(149);
+    expect(onPrediction.mock.lastCall![0]).not.toBeNull();
+    vi.advanceTimersByTime(1);
+    expect(onPrediction).toHaveBeenLastCalledWith(null);
+    const count = onPrediction.mock.calls.length;
+    vi.advanceTimersByTime(1000);
+    move(30);
+    expect(onPrediction).toHaveBeenCalledTimes(count);
+    move(40);
+    expect(onPrediction.mock.lastCall![0].origin.x).toBe(40);
+  });
+
+  it('clears a stationary sample and re-aims after changing direction', () => {
+    anchor();
+    const onPrediction = vi.fn();
+    setup({ onPrediction });
+    approach();
+    move(20);
+    expect(onPrediction).toHaveBeenLastCalledWith(null);
+    move(10);
+    expect(onPrediction.mock.lastCall![0]).toMatchObject({
+      origin: { x: 10, y: 50 },
+      projected: { x: -190, y: 50 },
+      prediction: null,
+    });
+  });
+
+  it.each([
+    'pointerdown',
+    'pointercancel',
+    'pointerout',
+    'scroll',
+    'visibilitychange',
+  ])('clears the visualization on %s', (type) => {
+    const onPrediction = vi.fn();
+    setup({ onPrediction });
+    approach();
+    document.dispatchEvent(new Event(type));
+    expect(onPrediction).toHaveBeenLastCalledWith(null);
+  });
+  it.each(['blur', 'resize', 'popstate'])(
+    'clears the visualization on window %s',
+    (type) => {
+      const onPrediction = vi.fn();
+      setup({ onPrediction });
+      approach();
+      window.dispatchEvent(new Event(type));
+      expect(onPrediction).toHaveBeenLastCalledWith(null);
+    },
+  );
+
+  it('clears on disable and destroy, with no delayed callbacks afterward', () => {
+    const onPrediction = vi.fn();
+    const s = setup({ onPrediction });
+    approach();
+    s.observer.update({ enabled: false, onPrediction });
+    expect(onPrediction).toHaveBeenLastCalledWith(null);
+    s.observer.update({ onPrediction });
+    approach();
+    s.observer.destroy();
+    expect(onPrediction).toHaveBeenLastCalledWith(null);
+    const count = onPrediction.mock.calls.length;
+    vi.advanceTimersByTime(1000);
+    approach();
+    expect(onPrediction).toHaveBeenCalledTimes(count);
+  });
+
+  it('stops notifying a removed callback', () => {
+    const onPrediction = vi.fn();
+    const s = setup({ onPrediction });
+    approach();
+    s.observer.update({});
+    const count = onPrediction.mock.calls.length;
+    vi.advanceTimersByTime(1000);
+    approach();
+    expect(onPrediction).toHaveBeenCalledTimes(count);
+  });
+
+  it('isolates visualization errors from prefetching and cleanup', () => {
+    anchor();
+    const s = setup({
+      onPrediction: () => {
+        throw new Error('render failed');
+      },
+    });
+    approach();
+    expect(s.prefetch).toHaveBeenCalledOnce();
+    expect(() => s.observer.destroy()).not.toThrow();
+  });
+});

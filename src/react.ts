@@ -7,6 +7,7 @@ import type { IntentObserver, IntentOptions, Prefetch } from './types.js';
 export type {
   IntentOptions,
   IntentEvent,
+  PredictionFrame,
   Prefetch,
   PrefetchContext,
 } from './types.js';

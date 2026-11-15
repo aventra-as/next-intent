@@ -145,6 +145,7 @@ instead of a second `NextIntent`.
 | `maxEntries`      | `256`                    | Maximum remembered destinations. Oldest entries are evicted first.                |
 | `root`            | `document`               | A document or element whose links should be observed.                             |
 | `filter`          | —                        | `(href, element) => boolean`, applied before prefetch. Throwing rejects the link. |
+| `onPrediction`    | —                        | Live `{ origin, projected, prediction }` frame, or `null` when motion clears.     |
 | `onIntent`        | —                        | Receives `{ href, element, reason, prediction? }` when a request is submitted.    |
 | `onError`         | —                        | Receives `(error, event)` for adapter failures or a throwing `onIntent` callback. |
 
@@ -152,6 +153,14 @@ instead of a second `NextIntent`.
 projected point, and velocity. `onIntent` reports a request submission, not
 network completion. Next.js App Router prefetch returns `void`, so its network
 failures cannot generally be reported through `onError`.
+
+`onPrediction` runs at most once per movement frame, even if a request is
+deduplicated, delayed, or over budget. Coordinates are viewport CSS pixels;
+`projected` is the end of the mode's look-ahead, and `prediction` is the selected
+visible target or `null`. The callback receives `null` after 150 ms without mouse
+movement and on resets such as scrolling, blur, or disabling the observer.
+Callback errors are ignored. Keep visualization work small; the playground uses
+an SVG overlay without rerendering the page on every mouse movement.
 
 ### Exclude links
 

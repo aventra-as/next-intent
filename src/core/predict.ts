@@ -91,15 +91,19 @@ function intersect(
   return near;
 }
 
-/** Pure trajectory prediction. Target objects are returned unchanged. */
-export function predictIntent<T extends IntentTarget>(
+interface MotionEstimate {
+  origin: Point;
+  velocity: Point;
+  stability: number;
+}
+
+/** Shared motion estimate for target selection and live visualization. */
+export function estimateMotion(
   samples: readonly PointerSample[],
-  targets: readonly T[],
-  options: PredictionOptions = {},
-): IntentPrediction<T> | null {
-  const config = resolvePredictionOptions(options);
+  config: Required<PredictionOptions>,
+): MotionEstimate | null {
   const recent = samples.slice(-12);
-  if (recent.length < 2 || targets.length === 0) return null;
+  if (recent.length < 2) return null;
   const segments: { x: number; y: number; speed: number; dt: number }[] = [];
   for (let i = 0; i < recent.length; i++) {
     const sample = recent[i]!;
@@ -146,9 +150,23 @@ export function predictIntent<T extends IntentTarget>(
   if (!Number.isFinite(magnitude) || magnitude === 0) return null;
   let stability = Math.min(1, magnitude / sumSpeed);
   if (sharpTurn && included === 1) stability *= 0.5;
-  const direction = { x: sumX / magnitude, y: sumY / magnitude };
-  const speed = magnitude / weights;
-  const origin = recent.at(-1)!;
+  const last = recent.at(-1)!;
+  return {
+    origin: { x: last.x, y: last.y },
+    velocity: { x: sumX / weights, y: sumY / weights },
+    stability,
+  };
+}
+
+export function selectTarget<T extends IntentTarget>(
+  motion: MotionEstimate | null,
+  targets: readonly T[],
+  config: Required<PredictionOptions>,
+): IntentPrediction<T> | null {
+  if (!motion) return null;
+  const { origin, velocity, stability } = motion;
+  const speed = Math.hypot(velocity.x, velocity.y);
+  const direction = { x: velocity.x / speed, y: velocity.y / speed };
   let winner: IntentPrediction<T> | null = null;
   for (const target of targets) {
     const rect = target.rect;
@@ -185,11 +203,18 @@ export function predictIntent<T extends IntentTarget>(
           Math.min(rect.bottom, origin.y + direction.y * distance),
         ),
       },
-      velocity: {
-        x: direction.x * speed,
-        y: direction.y * speed,
-      },
+      velocity: { ...velocity },
     };
   }
   return winner;
+}
+
+/** Pure trajectory prediction. Target objects are returned unchanged. */
+export function predictIntent<T extends IntentTarget>(
+  samples: readonly PointerSample[],
+  targets: readonly T[],
+  options: PredictionOptions = {},
+): IntentPrediction<T> | null {
+  const config = resolvePredictionOptions(options);
+  return selectTarget(estimateMotion(samples, config), targets, config);
 }

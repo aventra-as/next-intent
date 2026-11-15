@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Live prediction frames and a playground with projected paths and target highlights.
+
 - Cursor trajectory prediction with conservative, balanced, and aggressive presets.
 - Next.js App Router and Pages Router components and hooks.
 - IntentLink with viewport prefetch disabled by default.

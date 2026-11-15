@@ -1,5 +1,6 @@
 import type {
   IntentPrediction,
+  Point,
   PredictionOptions,
   Rect,
 } from './core/types.js';
@@ -15,6 +16,13 @@ export interface IntentEvent {
   element: HTMLAnchorElement;
   reason: 'trajectory' | 'hover' | 'focus';
   prediction?: IntentPrediction<LinkTarget>;
+}
+
+/** Live projection in viewport CSS pixels, independent of request history. */
+export interface PredictionFrame {
+  origin: Point;
+  projected: Point;
+  prediction: IntentPrediction<LinkTarget> | null;
 }
 
 export interface PrefetchContext {
@@ -47,6 +55,9 @@ export interface IntentOptions extends PredictionOptions {
   /** Maximum deduplication entries kept in memory. Default: 256. */
   maxEntries?: number;
   filter?: (href: string, element: HTMLAnchorElement) => boolean;
+  /** Called at most once per movement frame, before request limits. Null clears stale motion.
+   * Callback errors are ignored so visualization cannot interrupt prefetching. */
+  onPrediction?: (frame: PredictionFrame | null) => void;
   onIntent?: (event: IntentEvent) => void;
   onError?: (error: unknown, event: IntentEvent) => void;
 }

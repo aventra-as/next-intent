@@ -1,10 +1,11 @@
-import { predictIntent } from './core/predict.js';
+import { estimateMotion, selectTarget } from './core/predict.js';
 import type { PointerSample } from './core/types.js';
 import { getLinkHref } from './links.js';
 import { resolveOptions } from './options.js';
 import { PrefetchScheduler } from './scheduler.js';
 import type {
   IntentEvent,
+  PredictionFrame,
   IntentObserver,
   IntentOptions,
   LinkTarget,
@@ -13,6 +14,7 @@ import type {
 
 export type {
   IntentEvent,
+  PredictionFrame,
   IntentObserver,
   IntentOptions,
   LinkTarget,
@@ -42,6 +44,8 @@ export function createIntentObserver(
   let dirty = true;
   let frame: number | undefined;
   let destroyed = false;
+  let previewActive = false;
+  let idleTimer: number | undefined;
   let pending: { href: string; since: number } | undefined;
   let pointerId: number | undefined;
   const intersection =
@@ -52,7 +56,20 @@ export function createIntentObserver(
             visibility.set(entry.target, entry.isIntersecting);
         });
 
+  function preview(value: PredictionFrame | null) {
+    if (!config.onPrediction || (!value && !previewActive)) return;
+    previewActive = value !== null;
+    try {
+      config.onPrediction(value);
+    } catch {
+      // Visualization is optional and must not interrupt request scheduling.
+    }
+  }
+
   function reset() {
+    win!.clearTimeout(idleTimer);
+    idleTimer = undefined;
+    preview(null);
     samples = [];
     pending = undefined;
     pointerId = undefined;
@@ -153,7 +170,8 @@ export function createIntentObserver(
       });
     }
     // Drop occluded candidates before selecting the winner, so an overlay link can win.
-    let prediction = predictIntent(samples, targets, config);
+    const motion = estimateMotion(samples, config);
+    let prediction = selectTarget(motion, targets, config);
     while (prediction && typeof doc!.elementFromPoint === 'function') {
       const { rect, element } = prediction.target;
       const x = Math.min(
@@ -167,7 +185,19 @@ export function createIntentObserver(
       const hit = doc!.elementFromPoint(x, y);
       if (hit && element.contains(hit)) break;
       targets.splice(targets.indexOf(prediction.target), 1);
-      prediction = predictIntent(samples, targets, config);
+      prediction = selectTarget(motion, targets, config);
+    }
+    if (motion) {
+      preview({
+        origin: motion.origin,
+        projected: {
+          x: motion.origin.x + motion.velocity.x * config.horizonMs,
+          y: motion.origin.y + motion.velocity.y * config.horizonMs,
+        },
+        prediction,
+      });
+    } else {
+      preview(null);
     }
     if (!prediction) {
       pending = undefined;
@@ -215,6 +245,10 @@ export function createIntentObserver(
     samples.push(sample);
     if (samples.length > 12) samples.shift();
     if (frame === undefined) frame = win!.requestAnimationFrame(evaluate);
+    if (config.onPrediction) {
+      win!.clearTimeout(idleTimer);
+      idleTimer = win!.setTimeout(reset, 150);
+    }
   }
 
   function fallback(event: Event, reason: IntentEvent['reason']) {
@@ -269,6 +303,10 @@ export function createIntentObserver(
     update(next) {
       config = resolveOptions(next);
       if (!config.enabled) reset();
+      if (!config.onPrediction) {
+        win!.clearTimeout(idleTimer);
+        previewActive = false;
+      }
     },
     invalidate: (href) => scheduler.invalidate(href),
     destroy() {

@@ -1,7 +1,7 @@
 :root {
   font-family: Arial, Helvetica, sans-serif;
-  color: #202320;
-  background: #fafbf9;
+  color: #202020;
+  background: #fafafa;
   font-synthesis: none;
 }
 * {
@@ -27,7 +27,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 summary:focus-visible {
-  outline: 3px solid #506e45;
+  outline: 3px solid #525252;
   outline-offset: 4px;
 }
 main {
@@ -47,7 +47,7 @@ header {
 }
 .github-link {
   text-decoration: none;
-  color: #697065;
+  color: #666;
   font-size: 13px;
 }
 .intro {
@@ -61,7 +61,7 @@ h1 {
   font-weight: 500;
 }
 .intro p {
-  color: #71786d;
+  color: #737373;
   line-height: 1.6;
   font-size: 15px;
   margin: 18px 0 0;
@@ -76,26 +76,26 @@ h1 {
   min-width: 0;
   padding: 4px;
   margin: 0;
-  border: 1px solid #e1e5dc;
+  border: 1px solid #e5e5e5;
   border-radius: 8px;
   display: flex;
   gap: 4px;
-  background: #f0f3ed;
+  background: #f0f0f0;
 }
 .mode-control label {
   position: relative;
   padding: 9px 14px;
   border-radius: 5px;
   font-size: 12px;
-  color: #5f6b56;
+  color: #606060;
 }
 .mode-control label[data-selected='true'] {
-  color: #273923;
+  color: #262626;
   background: white;
-  box-shadow: 0 1px 4px #26362012;
+  box-shadow: 0 1px 4px #00000012;
 }
 .mode-control label:has(:focus-visible) {
-  outline: 2px solid #506e45;
+  outline: 2px solid #525252;
   outline-offset: 1px;
 }
 .mode-control input {
@@ -118,7 +118,7 @@ h1 {
 button {
   border: 0;
   background: transparent;
-  color: #6b7564;
+  color: #6b6b6b;
   font-size: 12px;
   padding: 10px 0 10px 10px;
 }
@@ -128,14 +128,16 @@ button span {
 }
 .mode-description {
   font-size: 12px;
-  color: #66745d;
+  color: #666;
   min-height: 18px;
   line-height: 1.5;
   margin: 13px 0 20px;
 }
 .arena {
-  border: 1px solid #e0e5da;
-  background: #f2f5ef;
+  position: relative;
+  isolation: isolate;
+  border: 1px solid #e2e2e2;
+  background: #f4f4f4;
   border-radius: 12px;
   padding: 28px;
   display: grid;
@@ -149,17 +151,17 @@ button span {
   justify-content: center;
   align-items: center;
   gap: 14px;
-  color: #68785d;
+  color: #686868;
   font-size: 12px;
 }
 .start-point {
-  border: 1px dashed #b8c2ac;
+  border: 1px dashed #bdbdbd;
   border-radius: 50%;
   width: 48px;
   height: 48px;
   display: grid;
   place-items: center;
-  color: #748467;
+  color: #777;
   font-size: 22px;
 }
 .cards {
@@ -170,7 +172,7 @@ button span {
 .card {
   min-height: 72px;
   border-radius: 8px;
-  border: 1px solid #e1e6db;
+  border: 1px solid #e5e5e5;
   background: #fff;
   padding: 22px;
   display: flex;
@@ -185,15 +187,79 @@ button span {
 }
 .card-status {
   font-size: 11px;
-  color: #66745d;
+  color: #666;
   letter-spacing: 0;
 }
-.card[data-requested='true'] {
-  border-color: #8aa575;
-  background: #fafff5;
+.card-prediction {
+  display: none;
 }
-.card[data-requested='true'] .card-status {
-  color: #56753e;
+.card[data-predicted='true'] {
+  border-color: #318453;
+  background: #effaf3;
+  box-shadow: 0 0 0 2px #31845324;
+}
+.card[data-predicted='true'] .card-request {
+  display: none;
+}
+.card[data-predicted='true'] .card-prediction {
+  display: inline;
+  color: #226a40;
+}
+.prediction-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  color: #8a8a8a;
+}
+.prediction-overlay[data-active='false'] {
+  visibility: hidden;
+}
+.prediction-overlay[data-target='true'] {
+  color: #318453;
+}
+.projected-path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  stroke-linecap: round;
+}
+.projection-origin {
+  fill: currentColor;
+}
+.projection-end,
+.landing-point {
+  fill: #fff;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.prediction-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 22px;
+  color: #666;
+  font-size: 11px;
+  margin-top: 14px;
+}
+.prediction-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.legend-path {
+  width: 20px;
+  border-top: 2px dashed #8a8a8a;
+}
+.legend-target {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #318453;
+  border-radius: 3px;
+  background: #effaf3;
 }
 .status-line {
   display: flex;
@@ -201,7 +267,7 @@ button span {
   align-items: center;
   gap: 16px;
   font-size: 12px;
-  color: #697261;
+  color: #666;
   padding: 18px 0 23px;
 }
 .status-line p {
@@ -209,24 +275,24 @@ button span {
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: #65715b;
+  color: #666;
 }
 .status-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #c5cdbd;
+  background: #ccc;
   flex-shrink: 0;
 }
 .status-dot[data-active='true'] {
-  background: #6b944d;
+  background: #666;
 }
 .activity {
-  border-top: 1px solid #e4e8df;
-  border-bottom: 1px solid #e4e8df;
+  border-top: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
   padding: 16px 0;
   font-size: 12px;
-  color: #738069;
+  color: #666;
 }
 summary {
   width: fit-content;
@@ -240,12 +306,12 @@ summary {
   gap: 7px;
 }
 input {
-  accent-color: #526f40;
+  accent-color: #525252;
 }
 .empty,
 .detail-note {
   font-size: 11px;
-  color: #68765f;
+  color: #686868;
   line-height: 1.6;
   margin: 20px 0 0;
 }
@@ -262,11 +328,11 @@ table {
 th,
 td {
   padding: 12px 8px 12px 0;
-  border-bottom: 1px solid #e4e8df;
+  border-bottom: 1px solid #e5e5e5;
   white-space: nowrap;
 }
 th {
-  color: #68765f;
+  color: #686868;
   font-weight: 400;
 }
 td:first-child {
@@ -279,13 +345,13 @@ footer {
   gap: 16px;
   padding-top: 28px;
   font-size: 11px;
-  color: #67755d;
+  color: #666;
 }
 footer a {
   text-decoration: none;
 }
 footer code {
-  color: #647657;
+  color: #666;
 }
 .destination {
   padding-top: 90px;
@@ -299,7 +365,7 @@ footer code {
 .destination p {
   line-height: 1.7;
   max-width: 450px;
-  color: #656b61;
+  color: #666;
 }
 @media (max-width: 640px) {
   main {
