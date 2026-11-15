@@ -748,6 +748,7 @@ export function DocContent({ doc, path }: { doc: Doc; path: string }) {
       ))}
       <footer>
         <Link href="/">Try the playground →</Link>
+        <a href="https://github.com/aventra-as/next-intent">View source ↗</a>
       </footer>
     </>
   );
