@@ -193,7 +193,8 @@ for (const mode of ['Conservative', 'Balanced', 'Aggressive']) {
       'false',
     );
     await expect(card).not.toHaveAttribute('data-predicted', 'true');
-    await expect(card).toContainText('Requested');
+    // A live candidate can clear before the conservative stable-target delay.
+    // Actual pre-hover requests are verified separately for every mode.
   });
 }
 
